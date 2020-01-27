@@ -1,16 +1,42 @@
 use strict;
-use warnings;
+use diagnostics;
 
 use Text::CSV;
 use IO::File;
+
+use Config::Simple;
+
+# global variables
+# my %Config;
+# Config::Simple->import_from('app.ini', \%Config);
+# my $cfg = new Config::Simple('app.ini');
+
+# my projectRoot = $cfg->param("app.project_root");
+# my logFile = $cfg->param("app.log_file");
+# my projectLib = $cfg->param("app.project_lib");
+# my patientFile = $cfg->param("app.patient_file");
+# my transactionFile = $cfg->param("app.transaction_file");
+
+# global constants
+# use constant PROJECT_ROOT => projectRoot;
+# use constant LOG_FILE => logFile;
+# use constant PROJECT_LIB => projectLib;
+# use constant PATIENT_FILE => patientFile;
+# use constant TRANSACTION_FILE => transactionFile;
+
+# use constant PROJECT_ROOT => $cfg->param("app.project_root");
+# use constant LOG_FILE => $cfg->param("app.log_file");
+# use constant PROJECT_LIB => $cfg->param("app.project_lib");
+# use constant PATIENT_FILE => $cfg->param("app.patient_file");
+# use constant TRANSACTION_FILE => $cfg->param("app.transaction_file");
 
 # Simple logging config
 use Log::Log4perl qw(:easy);
 
 Log::Log4perl->easy_init(
     {
-        # file  => ">> /home/jason/eclipse-workspace/perl/BuildDatabase/log/build-db.log",
-        file => ">> /vagrant/App/log/build-db.log",
+        file  => ">> C:/Users/jfigueroa/projects/perl/BuildDatabase/log/build-db.log",
+        # file => ">> " . $projectRoot . $logFile,
         level => $DEBUG
     },
     
@@ -22,7 +48,8 @@ Log::Log4perl->easy_init(
 
 # Directory with my packages
 # use lib "/home/jason/eclipse-workspace/perl/BuildDatabase/lib/";
-use lib "/vagrant/App/lib/";
+use lib "C:/Users/jfigueroa/projects/perl/BuildDatabase/lib/";
+# use lib projectRoot . projectLib;
 
 # My packages
 use BuildDb::Patient;
@@ -34,6 +61,16 @@ use BuildDb::Transaction;
 main();
 
 sub main {
+    # my %Config;
+    # Config::Simple->import_from('app.ini', \%Config);
+    my $cfg = new Config::Simple('app.ini');
+
+    my $projectRoot = $cfg->param("app.project_root");
+    my $logFile = $cfg->param("app.log_file");
+    my $projectLib = $cfg->param("app.project_lib");
+    my $patientFile = $cfg->param("app.patient_file");
+    my $transactionFile = $cfg->param("app.transaction_file");
+
     DEBUG("Beginning program execution");
     
     my $patientCsv = Text::CSV->new({ sep_char => ',' });
@@ -43,7 +80,7 @@ sub main {
     
     # Deactivate the following if using command line args
     # my $patientFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/PATIENT_DATA.csv";
-    my $patientFile = "/vagrant/App/data/input/PATIENT_DATA.csv";
+    my $patientFile = $projectRoot . $patientFile;
     
     # Using LOGDIE instead of die
     open(my $patientData, '<', $patientFile) or LOGDIE "Could not open '$patientFile' $!\n";
@@ -94,7 +131,7 @@ sub main {
     
     # Deactivate the following if using command line args
     # my $transactionFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/TRANSACTION_DATA.csv";
-    my $transactionFile = "/vagrant/App/data/input/TRANSACTION_DATA.csv";
+    my $transactionFile = $projectRoot . $transactionFile;
     
     # Using LOGDIE instead of die
     open(my $transactionData, '<', $transactionFile) or LOGDIE "Could not open '$transactionFile' $!\n";
