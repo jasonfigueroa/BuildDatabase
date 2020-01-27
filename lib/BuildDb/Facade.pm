@@ -1,3 +1,6 @@
+# TODO $dbh = DBI->connect line is duplicated in multiple spots in this file, 
+# maybe bring this to a higher scope to avoid duplication
+
 package BuildDb::Facade;
 
 use strict;
@@ -32,7 +35,10 @@ sub init_variables {
     
     $db_data{'driver'} = "SQLite";
     $db_data{'database'} = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/db/test.db";
+    
+    # dsn is a concatenated string comprised of the driver and the database name
     $db_data{'dsn'} = "DBI:$db_data{'driver'}:dbname=$db_data{'database'}";
+    
     $db_data{'userid'} = "";
     $db_data{'password'} = "";
     
@@ -42,6 +48,8 @@ sub init_variables {
 # TODO Check if table already exists
 sub create_patients_table {    
     my %db_data = init_variables();    
+    
+    # connect has 4 variables: the constructed dsn, userid, password, RaiseError flag
     my $dbh = DBI->connect($db_data{'dsn'}, $db_data{'userid'} = "", $db_data{'password'} = "", { RaiseError => 1 })
         or LOGDIE $DBI::errstr;
         

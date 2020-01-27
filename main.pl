@@ -9,7 +9,8 @@ use Log::Log4perl qw(:easy);
 
 Log::Log4perl->easy_init(
     {
-        file  => ">> /home/jason/eclipse-workspace/perl/BuildDatabase/log/build-db.log",
+        # file  => ">> /home/jason/eclipse-workspace/perl/BuildDatabase/log/build-db.log",
+        file => ">> /vagrant/App/log/build-db.log",
         level => $DEBUG
     },
     
@@ -20,7 +21,8 @@ Log::Log4perl->easy_init(
 );
 
 # Directory with my packages
-use lib "/home/jason/eclipse-workspace/perl/BuildDatabase/lib/";
+# use lib "/home/jason/eclipse-workspace/perl/BuildDatabase/lib/";
+use lib "/vagrant/App/lib/";
 
 # My packages
 use BuildDb::Patient;
@@ -40,7 +42,8 @@ sub main {
     #my $file = $ARGV[0] or die "Need to get CSV file on the command line\n";
     
     # Deactivate the following if using command line args
-    my $patientFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/PATIENT_DATA.csv";
+    # my $patientFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/PATIENT_DATA.csv";
+    my $patientFile = "/vagrant/App/data/input/PATIENT_DATA.csv";
     
     # Using LOGDIE instead of die
     open(my $patientData, '<', $patientFile) or LOGDIE "Could not open '$patientFile' $!\n";
@@ -90,7 +93,8 @@ sub main {
     my $transactionCsv = Text::CSV->new({ sep_char => ',' });
     
     # Deactivate the following if using command line args
-    my $transactionFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/TRANSACTION_DATA.csv";
+    # my $transactionFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/TRANSACTION_DATA.csv";
+    my $transactionFile = "/vagrant/App/data/input/TRANSACTION_DATA.csv";
     
     # Using LOGDIE instead of die
     open(my $transactionData, '<', $transactionFile) or LOGDIE "Could not open '$transactionFile' $!\n";
