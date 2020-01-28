@@ -10,7 +10,7 @@ use Log::Log4perl qw(:easy);
 # Simple logging config
 Log::Log4perl->easy_init(
     {
-        file  => ">> C:/Users/jfigueroa/projects/perl/BuildDatabase/log/build-db.log",
+        file  => ">> /vagrant/BuildDatabase/log/build-db.log",
         level => $DEBUG
     },
     
@@ -34,7 +34,7 @@ sub init_variables {
     my %db_data;
     
     $db_data{'driver'} = "SQLite";
-    $db_data{'database'} = "C:/Users/jfigueroa/projects/perl/BuildDatabase/data/db/test.db";
+    $db_data{'database'} = "/vagrant/BuildDatabase/data/db/test.db";
     
     # dsn is a concatenated string comprised of the driver and the database name
     $db_data{'dsn'} = "DBI:$db_data{'driver'}:dbname=$db_data{'database'}";

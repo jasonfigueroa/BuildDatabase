@@ -1,4 +1,4 @@
-use strict;
+# use strict;
 use diagnostics;
 
 use Text::CSV;
@@ -9,13 +9,13 @@ use Config::Simple;
 # global variables
 # my %Config;
 # Config::Simple->import_from('app.ini', \%Config);
-# my $cfg = new Config::Simple('app.ini');
+my $cfg = new Config::Simple('app.ini');
 
-# my projectRoot = $cfg->param("app.project_root");
-# my logFile = $cfg->param("app.log_file");
-# my projectLib = $cfg->param("app.project_lib");
-# my patientFile = $cfg->param("app.patient_file");
-# my transactionFile = $cfg->param("app.transaction_file");
+my $projectRoot = $cfg->param("app.project_root");
+my $logFile = $cfg->param("app.log_file");
+my $projectLib = $cfg->param("app.project_lib");
+my $patientFile = $cfg->param("app.patient_file");
+my $transactionFile = $cfg->param("app.transaction_file");
 
 # global constants
 # use constant PROJECT_ROOT => projectRoot;
@@ -35,8 +35,8 @@ use Log::Log4perl qw(:easy);
 
 Log::Log4perl->easy_init(
     {
-        file  => ">> C:/Users/jfigueroa/projects/perl/BuildDatabase/log/build-db.log",
-        # file => ">> " . $projectRoot . $logFile,
+        # file  => ">> C:/Users/jfigueroa/projects/perl/BuildDatabase/log/build-db.log",
+        file => ">> " . $projectRoot . $logFile,
         level => $DEBUG
     },
     
@@ -48,7 +48,7 @@ Log::Log4perl->easy_init(
 
 # Directory with my packages
 # use lib "/home/jason/eclipse-workspace/perl/BuildDatabase/lib/";
-use lib "C:/Users/jfigueroa/projects/perl/BuildDatabase/lib/";
+use lib "/vagrant/BuildDatabase/lib/";
 # use lib projectRoot . projectLib;
 
 # My packages
@@ -63,13 +63,13 @@ main();
 sub main {
     # my %Config;
     # Config::Simple->import_from('app.ini', \%Config);
-    my $cfg = new Config::Simple('app.ini');
+    # my $cfg = new Config::Simple('app.ini');
 
-    my $projectRoot = $cfg->param("app.project_root");
-    my $logFile = $cfg->param("app.log_file");
-    my $projectLib = $cfg->param("app.project_lib");
-    my $patientFile = $cfg->param("app.patient_file");
-    my $transactionFile = $cfg->param("app.transaction_file");
+    # my $projectRoot = $cfg->param("app.project_root");
+    # my $logFile = $cfg->param("app.log_file");
+    # my $projectLib = $cfg->param("app.project_lib");
+    # my $patientFile = $cfg->param("app.patient_file");
+    # my $transactionFile = $cfg->param("app.transaction_file");
 
     DEBUG("Beginning program execution");
     
@@ -83,7 +83,7 @@ sub main {
     my $patientFile = $projectRoot . $patientFile;
     
     # Using LOGDIE instead of die
-    open(my $patientData, '<', $patientFile) or LOGDIE "Could not open '$patientFile' $!\n";
+    open(my $patientData, '<:encoding(utf8)', $patientFile) or LOGDIE "Could not open '$patientFile' $!\n";
     
     my $headers = <$patientData>;
     
