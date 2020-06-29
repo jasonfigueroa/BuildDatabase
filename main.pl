@@ -1,57 +1,20 @@
-# use strict;
+use strict;
 use diagnostics;
 
 use Text::CSV;
 use IO::File;
 
-use Config::Simple;
-
-# global variables
-# my %Config;
-# Config::Simple->import_from('app.ini', \%Config);
-my $cfg = new Config::Simple('app.ini');
-
-my $projectRoot = $cfg->param("app.project_root");
-my $logFile = $cfg->param("app.log_file");
-my $projectLib = $cfg->param("app.project_lib");
-my $patientFile = $cfg->param("app.patient_file");
-my $transactionFile = $cfg->param("app.transaction_file");
-
-# global constants
-# use constant PROJECT_ROOT => projectRoot;
-# use constant LOG_FILE => logFile;
-# use constant PROJECT_LIB => projectLib;
-# use constant PATIENT_FILE => patientFile;
-# use constant TRANSACTION_FILE => transactionFile;
-
-# use constant PROJECT_ROOT => $cfg->param("app.project_root");
-# use constant LOG_FILE => $cfg->param("app.log_file");
-# use constant PROJECT_LIB => $cfg->param("app.project_lib");
-# use constant PATIENT_FILE => $cfg->param("app.patient_file");
-# use constant TRANSACTION_FILE => $cfg->param("app.transaction_file");
-
-# Simple logging config
-use Log::Log4perl qw(:easy);
-
-Log::Log4perl->easy_init(
-    {
-        # file  => ">> C:/Users/jfigueroa/projects/perl/BuildDatabase/log/build-db.log",
-        file => ">> " . $projectRoot . $logFile,
-        level => $DEBUG
-    },
-    
-    {
-        file  => "STDERR",
-        level => $DEBUG
-    }
+use BuildDb::Config qw(
+    $project_root
+    $log_file
+    $patient_file
+    $transaction_file
 );
 
-# Directory with my packages
-# use lib "/home/jason/eclipse-workspace/perl/BuildDatabase/lib/";
-use lib "/vagrant/BuildDatabase/lib/";
-# use lib projectRoot . projectLib;
+use BuildDb::Logger qw(
+    $logger
+);
 
-# My packages
 use BuildDb::Patient;
 use BuildDb::PatientList;
 use BuildDb::Facade;
@@ -61,40 +24,29 @@ use BuildDb::Transaction;
 main();
 
 sub main {
-    # my %Config;
-    # Config::Simple->import_from('app.ini', \%Config);
-    # my $cfg = new Config::Simple('app.ini');
-
-    # my $projectRoot = $cfg->param("app.project_root");
-    # my $logFile = $cfg->param("app.log_file");
-    # my $projectLib = $cfg->param("app.project_lib");
-    # my $patientFile = $cfg->param("app.patient_file");
-    # my $transactionFile = $cfg->param("app.transaction_file");
-
-    DEBUG("Beginning program execution");
+    $logger->debug("Beginning program execution");
     
-    my $patientCsv = Text::CSV->new({ sep_char => ',' });
+    my $patient_csv = Text::CSV->new({ sep_char => ',' });
      
     # Following is for command line args, I've not tested it
     #my $file = $ARGV[0] or die "Need to get CSV file on the command line\n";
     
     # Deactivate the following if using command line args
-    # my $patientFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/PATIENT_DATA.csv";
-    my $patientFile = $projectRoot . $patientFile;
+    my $patient_file = $project_root . $patient_file;
     
-    # Using LOGDIE instead of die
-    open(my $patientData, '<:encoding(utf8)', $patientFile) or LOGDIE "Could not open '$patientFile' $!\n";
+    # Using logdie instead of die
+    open(my $patient_data, '<:encoding(utf8)', $patient_file) or $logger->logdie("Could not open '$patient_file' $!\n");
     
-    my $headers = <$patientData>;
+    my $headers = <$patient_data>;
     
     chomp $headers;
     
-    my @headerFields;
-    if ($patientCsv->parse($headers)) {
-        @headerFields = $patientCsv->fields();
+    my @header_fields;
+    if ($patient_csv->parse($headers)) {
+        @header_fields = $patient_csv->fields();
     }
     
-    my @validPatientHeaders = (
+    my @valid_patient_headers = (
         'first_name',
         'last_name',
         'email',
@@ -105,16 +57,16 @@ sub main {
         'zip_code'
     );
     
-    if (!valid_headers(\@validPatientHeaders, \@headerFields)) {
-        LOGDIE "invalid headers, valid headers in any order [first_name, last_name, email, account_number, street_address, city, state, zip_code]\n";
+    if (!valid_headers(\@valid_patient_headers, \@header_fields)) {
+        $logger->logdie("invalid headers, valid headers in any order [first_name, last_name, email, account_number, street_address, city, state, zip_code]\n");
     }
     
-    my $headerIndex = 0;
-    my %headerHash;
+    my $header_index = 0;
+    my %header_hash;
     
     # Capturing header indexes from the data
-    for my $header (@headerFields) {
-        $headerHash{$header} = $headerIndex++;
+    for my $header (@header_fields) {
+        $header_hash{$header} = $header_index++;
     }
     
     # Creating tables
@@ -122,84 +74,84 @@ sub main {
     BuildDb::Facade->create_transactions_table();
     
     # PatientList Object
-    my $patientList = build_patient_list($patientCsv, $patientData, \%headerHash);
+    my $patient_list = build_patient_list($patient_csv, $patient_data, \%header_hash);
 
     # For random assignment of patient ids to transactions, this relationship is arbitrary and created on execution
-    my @patientIds = BuildDb::Facade->insert_patients($patientList);
+    my @patient_ids = BuildDb::Facade->insert_patients($patient_list);
     
-    my $transactionCsv = Text::CSV->new({ sep_char => ',' });
+    my $transaction_csv = Text::CSV->new({ sep_char => ',' });
     
     # Deactivate the following if using command line args
-    # my $transactionFile = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/TRANSACTION_DATA.csv";
-    my $transactionFile = $projectRoot . $transactionFile;
+    # my $transaction_file = "/home/jason/eclipse-workspace/perl/BuildDatabase/data/input/TRANSACTION_DATA.csv";
+    my $transaction_file = $project_root . $transaction_file;
     
     # Using LOGDIE instead of die
-    open(my $transactionData, '<', $transactionFile) or LOGDIE "Could not open '$transactionFile' $!\n";
+    open(my $transaction_data, '<', $transaction_file) or $logger->logdie("Could not open '$transaction_file' $!\n");
     
-    my $transactionHeaders = <$transactionData>;
+    my $transaction_headers = <$transaction_data>;
     
-    chomp $transactionHeaders;
+    chomp $transaction_headers;
     
-    my @transactionHeaderFields;
-    if ($transactionCsv->parse($transactionHeaders)) {
-        @transactionHeaderFields = $transactionCsv->fields();
+    my @transaction_header_fields;
+    if ($transaction_csv->parse($transaction_headers)) {
+        @transaction_header_fields = $transaction_csv->fields();
     }
     
-    my $transactionHeaderIndex = 0;
-    my %transactionHeaderHash;
-    for my $header (@transactionHeaderFields) {
-        $transactionHeaderHash{$header} = $transactionHeaderIndex++;
+    my $transaction_header_index = 0;
+    my %transaction_header_hash;
+    for my $header (@transaction_header_fields) {
+        $transaction_header_hash{$header} = $transaction_header_index++;
     }
     
     # TransactionList Object
-    my $transactionList = build_transaction_list($transactionCsv, $transactionData, \%transactionHeaderHash, \@patientIds);
+    my $transaction_list = build_transaction_list($transaction_csv, $transaction_data, \%transaction_header_hash, \@patient_ids);
     
-    BuildDb::Facade->insert_transactions($transactionList);
+    BuildDb::Facade->insert_transactions($transaction_list);
 
     my $x = 1;
-    DEBUG("Exiting program");
+    $logger->debug("Exiting program");
 }
 
 # Parameter(s):
-#   patient csv ... object?
-#   patient data ... object?
-#   refernce to headers hash containing indexes for valid headers
+#   patient csv ... Text::CSV=HASH (type)
+#   patient data ... GLOB (type)
+#   reference to headers hash containing indexes for valid headers
 sub build_patient_list {
-    my $patientCsv = shift;
-    my $patientData = shift;
+    my $patient_csv = shift;
+    my $patient_data = shift;
     
-    my $headersHashReference = shift;
+    my $headers_hash_reference = shift;
     
-    my %headersHash = %{$headersHashReference};
+    my %headers_hash = %{$headers_hash_reference};
     
-    my $patientList = BuildDb::PatientList->new();
-    while (my $line = <$patientData>) {
+    my $patient_list = BuildDb::PatientList->new();
+    while (my $line = <$patient_data>) {
         chomp $line;  
      
-        if ($patientCsv->parse($line)) {
+        if ($patient_csv->parse($line)) {
      
-            my @fields = $patientCsv->fields();
+            my @fields = $patient_csv->fields();
             
             # Patient Object
             my $patient = BuildDb::Patient->new(
-                    firstName => $fields[$headersHash{'first_name'}],
-                    lastName => $fields[$headersHash{'last_name'}],
-                    email => $fields[$headersHash{'email'}],
-                    accountNumber => $fields[$headersHash{'account_number'}],
-                    streetAddress => $fields[$headersHash{'street_address'}],
-                    city => $fields[$headersHash{'city'}],
-                    patientState => $fields[$headersHash{'state'}],
-                    zip => $fields[$headersHash{'zip_code'}]
+                    firstName => $fields[$headers_hash{'first_name'}],
+                    lastName => $fields[$headers_hash{'last_name'}],
+                    email => $fields[$headers_hash{'email'}],
+                    accountNumber => $fields[$headers_hash{'account_number'}],
+                    streetAddress => $fields[$headers_hash{'street_address'}],
+                    city => $fields[$headers_hash{'city'}],
+                    patientState => $fields[$headers_hash{'state'}],
+                    zip => $fields[$headers_hash{'zip_code'}]
                 );        
             
-            $patientList->add_patient($patient);
+            $patient_list->add_patient($patient);
      
         } else {
-            LOGDIE "build_patient_list subroutine could not parse line: $line\n";
+            $logger->logdie("build_patient_list subroutine could not parse line: $line\n");
         }
     }
     
-    return $patientList;
+    return $patient_list;
 }
 
 # Parameter(s):
@@ -208,66 +160,66 @@ sub build_patient_list {
 #   reference to headers hash containing indexes for valid headers
 #   reference to array containing all patient ids
 sub build_transaction_list {
-    my $transactionCsv = shift;
-    my $transactionData = shift;
+    my $transaction_csv = shift;
+    my $transaction_data = shift;
     
-    my $headersHashReference = shift;
-    my $patientIdsReference = shift;
+    my $headers_hash_reference = shift;
+    my $patient_ids_reference = shift;
     
-    my %headersHash = %{$headersHashReference};
-    my @patientIds = @{$patientIdsReference};
+    my %headers_hash = %{$headers_hash_reference};
+    my @patient_ids = @{$patient_ids_reference};
     
-    my $transactionList = BuildDb::TransactionList->new();
-    while (my $line = <$transactionData>) {
+    my $transaction_list = BuildDb::TransactionList->new();
+    while (my $line = <$transaction_data>) {
         chomp $line;  
      
-        if ($transactionCsv->parse($line)) {
+        if ($transaction_csv->parse($line)) {
      
-            my @fields = $transactionCsv->fields();
+            my @fields = $transaction_csv->fields();
             
             # For randomly assigning transactions to existing patient ids
-            my $randomNumber = int(rand($patientIds[$#patientIds]));
+            my $random_number = int(rand($patient_ids[$#patient_ids]));
             
             # Transaction Object
             my $transaction = BuildDb::Transaction->new(
-                    transactionId => $fields[$headersHash{'transaction_id'}],
-                    patientId => $randomNumber,
-                    transactionDescription => $fields[$headersHash{'transaction_description'}],
-                    transactionAmount => $fields[$headersHash{'transaction_amount'}],
-                    transactionDate => $fields[$headersHash{'transaction_date'}]
+                    transactionId => $fields[$headers_hash{'transaction_id'}],
+                    patientId => $random_number,
+                    transactionDescription => $fields[$headers_hash{'transaction_description'}],
+                    transactionAmount => $fields[$headers_hash{'transaction_amount'}],
+                    transactionDate => $fields[$headers_hash{'transaction_date'}]
                 );        
             
-            $transactionList->add_transaction($transaction);
+            $transaction_list->add_transaction($transaction);
      
         } else {
-            LOGDIE "build_transaction_list subroutine could not parse line: $line\n";
+            $logger->logdie("build_transaction_list subroutine could not parse line: $line\n");
         }
     }
     
-    return $transactionList;
+    return $transaction_list;
 }
 
 # Parameter(s):
 #   Array of valid headers
 #   Array of headers from data
 sub valid_headers {
-    my $validHeadersReference = shift;
-    my $headersReference = shift;
+    my $valid_headers_reference = shift;
+    my $headers_reference = shift;
     
-    my @validHeaders = @{$validHeadersReference};
-    my @headers = @{$headersReference};
+    my @valid_headers = @{$valid_headers_reference};
+    my @headers = @{$headers_reference};
     
-    my $validHeadersCount = @validHeaders;
-    my $headersCount = @headers;
+    my $valid_headers_count = @valid_headers;
+    my $headers_count = @headers;
     
     # if arrays are not of equal length
-    if ($validHeadersCount ne $headersCount) {
+    if ($valid_headers_count ne $headers_count) {
         return 0;
     }
     
-    for my $validHeader(@validHeaders) {
-        # If validHeader not found in headers array
-        if ( grep { $_ eq $validHeader} @headers ) {
+    for my $valid_header(@valid_headers) {
+        # If valid_header not found in headers array
+        if ( grep { $_ eq $valid_header} @headers ) {
             next;
         }
         

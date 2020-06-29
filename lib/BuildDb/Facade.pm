@@ -1,23 +1,20 @@
-# TODO $dbh = DBI->connect line is duplicated in multiple spots in this file, 
-# maybe bring this to a higher scope to avoid duplication
-
 package BuildDb::Facade;
 
 use strict;
 use DBI;
-use Log::Log4perl qw(:easy);
 
-# Simple logging config
-Log::Log4perl->easy_init(
-    {
-        file  => ">> /vagrant/BuildDatabase/log/build-db.log",
-        level => $DEBUG
-    },
-    
-    {
-        file  => "STDERR",
-        level => $DEBUG
-    }
+use BuildDb::Config qw(
+    $project_root
+    $log_file
+    $driver
+    $database
+    $dsn
+    $username
+    $password
+);
+
+use BuildDb::Logger qw(
+    $logger
 );
 
 #my @ISA = qw(Exporter);
@@ -30,30 +27,10 @@ insert_patients
 insert_transactions
 );
 
-sub init_variables {
-    my %db_data;
-    
-    $db_data{'driver'} = "SQLite";
-    $db_data{'database'} = "/vagrant/BuildDatabase/data/db/test.db";
-    
-    # dsn is a concatenated string comprised of the driver and the database name
-    $db_data{'dsn'} = "DBI:$db_data{'driver'}:dbname=$db_data{'database'}";
-    
-    $db_data{'userid'} = "";
-    $db_data{'password'} = "";
-    
-    return %db_data;
-}
-
-# TODO Check if table already exists
 sub create_patients_table {    
-    my %db_data = init_variables();    
+    my $dbh = DBI->connect($dsn, $username, $password, { RaiseError => 1 }) or $logger->logdie($DBI::errstr);
     
-    # connect has 4 variables: the constructed dsn, userid, password, RaiseError flag
-    my $dbh = DBI->connect($db_data{'dsn'}, $db_data{'userid'} = "", $db_data{'password'} = "", { RaiseError => 1 })
-        or LOGDIE $DBI::errstr;
-        
-    DEBUG("Successfully connected to database");
+    $logger->debug("Successfully connected to database");
     
     my $stmt = qq(CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY  AUTOINCREMENT,
@@ -70,22 +47,20 @@ sub create_patients_table {
     
     my $rv = $dbh->do($stmt);
     if($rv < 0) {
-        ERROR($DBI::errstr);
+        $logger->error($DBI::errstr);
     } else {
-        DEBUG("Patients table created or exists");
+        $logger->debug("Patients table created or exists");
     }
     
-    DEBUG("Disconnecting from database");
+    $logger->debug("Disconnecting from database");
     $dbh->disconnect();
-    DEBUG("Successfully disconnected from database");
+    $logger->debug("Successfully disconnected from database");
 }
 
 sub create_transactions_table {
-    my %db_data = init_variables();    
-    my $dbh = DBI->connect($db_data{'dsn'}, $db_data{'userid'} = "", $db_data{'password'} = "", { RaiseError => 1 })
-        or LOGDIE $DBI::errstr;
+    my $dbh = DBI->connect($dsn, $username, $password, { RaiseError => 1 }) or $logger->logdie($DBI::errstr);
         
-    DEBUG("Successfully connected to database");
+    $logger->debug("Successfully connected to database");
     
     my $stmt = qq(CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY  AUTOINCREMENT,
@@ -100,45 +75,43 @@ sub create_transactions_table {
     
     my $rv = $dbh->do($stmt);
     if($rv < 0) {
-        ERROR($DBI::errstr);
+        $logger->error($DBI::errstr);
     } else {
-        DEBUG("Transactions table created or exists");
+        $logger->debug("Transactions table created or exists");
     }
     
-    DEBUG("Disconnecting from database");
+    $logger->debug("Disconnecting from database");
     $dbh->disconnect();
-    DEBUG("Successfully disconnected from database");
+    $logger->debug("Successfully disconnected from database");
 }
 
 sub insert_patients {
     my $self = shift;
-    my $patientList = shift;
+    my $patient_list = shift;
     
-    my @patientIds = ();
+    my @patient_ids = ();
     
-    my %db_data = init_variables();    
-    my $dbh = DBI->connect($db_data{'dsn'}, $db_data{'userid'} = "", $db_data{'password'} = "", { RaiseError => 1 })
-        or LOGDIE $DBI::errstr;
+    my $dbh = DBI->connect($dsn, $username, $password, { RaiseError => 1 }) or $logger->logdie($DBI::errstr);
         
-    DEBUG("Successfully connected to database");
+    $logger->debug("Successfully connected to database");
     
     my $id;
-    my $firstName;
-    my $lastName;
+    my $first_name;
+    my $last_name;
     my $email;
-    my $accountNumber;
-    my $streetAddress;
+    my $account_number;
+    my $street_address;
     my $city;
     my $state;
     my $zip;
     
-    DEBUG("Inserting patients");
-    foreach my $patient (@{$patientList->patients}) {
-        $firstName = $patient->firstName;
-        $lastName = $patient->lastName;
+    $logger->debug("Inserting patients");
+    foreach my $patient (@{$patient_list->patients}) {
+        $first_name = $patient->firstName;
+        $last_name = $patient->lastName;
         $email = $patient->email;
-        $accountNumber = $patient->accountNumber;
-        $streetAddress = $patient->streetAddress;
+        $account_number = $patient->accountNumber;
+        $street_address = $patient->streetAddress;
         $city = $patient->city;
         $state = $patient->patientState;
         $zip = $patient->zip;
@@ -146,65 +119,63 @@ sub insert_patients {
         my $stmt = qq(INSERT INTO patients (first_name, last_name, email, account_number, street_address, city, state, zip_code)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?));
         my $sth = $dbh->prepare($stmt);
-        my $rc = $sth->execute($firstName, $lastName, $email, $accountNumber, $streetAddress, $city, $state, $zip) or LOGDIE $DBI::errstr;
+        my $rc = $sth->execute($first_name, $last_name, $email, $account_number, $street_address, $city, $state, $zip) or $logger->logdie($DBI::errstr);
         
         $id = $dbh->sqlite_last_insert_rowid;
-        push @patientIds, $id;
+        push @patient_ids, $id;
         
         # TODO add id to patient object
 
-        DEBUG("Successfully inserted patient {id: $id, first name: $firstName, last name: $lastName}");
+        $logger->debug("Successfully inserted patient {id: $id, first name: $first_name, last name: $last_name}");
     }
-    DEBUG("Successfully inserted all patients");
+    $logger->debug("Successfully inserted all patients");
     
-    DEBUG("Disconnecting from database");
+    $logger->debug("Disconnecting from database");
     $dbh->disconnect();
-    DEBUG("Successfully disconnected from database");
+    $logger->debug("Successfully disconnected from database");
     
-    return @patientIds;
+    return @patient_ids;
 }
 
 sub insert_transactions {
     my $self = shift;
-    my $transactionList = shift;
+    my $transaction_list = shift;
     
-    my %db_data = init_variables();    
-    my $dbh = DBI->connect($db_data{'dsn'}, $db_data{'userid'} = "", $db_data{'password'} = "", { RaiseError => 1 })
-        or LOGDIE $DBI::errstr;
+    my $dbh = DBI->connect($dsn, $username, $password, { RaiseError => 1 }) or $logger->logdie($DBI::errstr);
         
-    DEBUG("Successfully connected to database");
+    $logger->debug("Successfully connected to database");
     
     my $id;
-    my $transactionId;
-    my $patientId;
-    my $transactionDescription;
-    my $transactionAmount;
-    my $transactionDate;
+    my $transaction_id;
+    my $patient_id;
+    my $transaction_description;
+    my $transaction_amount;
+    my $transaction_date;
     
-    DEBUG("Inserting transactions");
-    foreach my $transaction (@{$transactionList->transactions}) {
-        $transactionId = $transaction->transactionId;
-        $patientId = $transaction->patientId;
-        $transactionDescription = $transaction->transactionDescription;
-        $transactionAmount = $transaction->transactionAmount;
-        $transactionDate = $transaction->transactionDate;
+    $logger->debug("Inserting transactions");
+    foreach my $transaction (@{$transaction_list->transactions}) {
+        $transaction_id = $transaction->transactionId;
+        $patient_id = $transaction->patientId;
+        $transaction_description = $transaction->transactionDescription;
+        $transaction_amount = $transaction->transactionAmount;
+        $transaction_date = $transaction->transactionDate;
 
         my $stmt = qq(INSERT INTO transactions (transaction_id, transaction_description, transaction_amount, transaction_date, patient_id)
                VALUES (?, ?, ?, ?, ?));
         my $sth = $dbh->prepare($stmt);
-        my $rc = $sth->execute($transactionId, $transactionDescription, $transactionAmount, $transactionDate, $patientId) or LOGDIE $DBI::errstr;
+        my $rc = $sth->execute($transaction_id, $transaction_description, $transaction_amount, $transaction_date, $patient_id) or $logger->logdie($DBI::errstr);
         
         $id = $dbh->sqlite_last_insert_rowid;
         
         # TODO add id to transaction object
 
-        DEBUG("Successfully inserted transaction {id: $id, transaction id: $transactionId, transaction description: $transactionDescription}");
+        $logger->debug("Successfully inserted transaction {id: $id, transaction id: $transaction_id, transaction description: $transaction_description}");
     }
-    DEBUG("Successfully inserted all transactions");
+    $logger->debug("Successfully inserted all transactions");
     
-    DEBUG("Disconnecting from database");
+    $logger->debug("Disconnecting from database");
     $dbh->disconnect();
-    DEBUG("Successfully disconnected from database");
+    $logger->debug("Successfully disconnected from database");
 }
 
 1;
